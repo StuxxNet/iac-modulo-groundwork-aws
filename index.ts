@@ -1,39 +1,29 @@
-import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
+import * as grondwork from "./groudwork"
 
-export interface vpcInterface {
-    name: string;
-    cidrBlock: string;
-    enableDnsHostname: boolean;
-    tags?: {};
+const vpcDefinition: grondwork.vpcOptions = {
+    name: "EKS",
+    cidrBlock: "10.0.0.0/16",
+    enableDnsHostname: true,
 }
 
-const defaultTags: {} = {
-    Package: "groundwork_aws"
+const publicSubnetsDefinition: grondwork.subnetOptions[] = [{
+    name: "EKS-Public-1",
+    cidrBlock: "10.0.0.0/20",
+    availabilityZone: "eu-central-1a",
+    assignPublicAddress: true
+}]
+
+const privateSubnetsDefinition: grondwork.subnetOptions[] = [{
+    name: "EKS-Private-1",
+    cidrBlock: "10.0.64.0/20",
+    availabilityZone: "eu-central-1b",
+    assignPublicAddress: false
+}]
+
+const groundworkDefinition: grondwork.groundWorkOptions = {
+    vpcOptions: vpcDefinition,
+    publicSubnetsOptions: publicSubnetsDefinition,
+    privateSubnetsOptions: privateSubnetsDefinition
 }
 
-function createVpc(vpcData: vpcInterface): aws.ec2.Vpc {
-
-    let vpcTags: {} = {};
-    if(vpcData.tags == undefined){
-        vpcTags = defaultTags
-    }
-    else{
-        vpcTags = Object.assign(vpcData.tags, defaultTags);
-    }
-    
-    const vpc = new aws.ec2.Vpc(vpcData.name, {
-        cidrBlock: vpcData.cidrBlock,
-        instanceTenancy: "default",
-        enableDnsHostnames: vpcData.enableDnsHostname,
-        tags: vpcTags,
-    });
-
-    return vpc
-}
-
-export function createGroundWork(vpcData: vpcInterface) {
-    const mainVpc = createVpc(vpcData);
-}
-
-createGroundWork({name: "iac-vpc", cidrBlock: "10.0.0.0/16", enableDnsHostname: true, tags: {Name: "iac-vpc"}})
+const awsGroudwork = new grondwork.groundWork("eksGroundwork", groundworkDefinition);
