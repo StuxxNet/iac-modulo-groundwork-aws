@@ -1,6 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import { Vocabulary } from "@pulumi/aws/connect";
 
 export interface vpcOptions {
     name: string;
@@ -39,12 +38,12 @@ export class groundWork extends pulumi.ComponentResource {
         const mainVpc = this.createVpc(this.groundWorkOptions.vpcOptions);
 
         // Public network
-        const internetGateway = this.createInternetGateway(mainVpc)
+        const internetGateway = this.createInternetGateway(mainVpc);
         const publicSubnets = this.createSubnets(mainVpc, this.groundWorkOptions.publicSubnetsOptions);
 
         // Private network
         const privateSubnets = this.createSubnets(mainVpc, this.groundWorkOptions.privateSubnetsOptions);
-        const natGatewayAssociation = this.createNatGateways(privateSubnets);
+        const natGateway = this.createNatGateways(privateSubnets);
     }
 
     private createVpc(vpc: vpcOptions): aws.ec2.Vpc {
@@ -68,13 +67,26 @@ export class groundWork extends pulumi.ComponentResource {
                 Name: "internet-gateway",
             },
         });
+
+        const defaultRouteTable = new aws.ec2.DefaultRouteTable("publicRouteTable", {
+            defaultRouteTableId: vpc.defaultRouteTableId,
+            routes: [
+                {
+                    cidrBlock: "0.0.0.0/0",
+                    gatewayId: awsInternetGateway.id,
+                },
+            ],
+            tags: {
+                Name: "PublicRoutes",
+            },
+        });
         
         return awsInternetGateway;
     }
 
     private createSubnets(vpc: aws.ec2.Vpc, subnets: subnetOptions[]) {
         let createdSubnets: aws.ec2.Subnet[] = [];
-        for(const subnet of subnets){
+        for(const [i, subnet] of subnets.entries()){
             const awsSubnet = new aws.ec2.Subnet(subnet.name, {
                 vpcId: vpc.id,
                 cidrBlock: subnet.cidrBlock,
@@ -104,6 +116,24 @@ export class groundWork extends pulumi.ComponentResource {
                 tags: {
                     Name: `gw-NAT`,
                 },
+            });
+
+            const privateRouteTable = new aws.ec2.RouteTable(`privateRoutetable-${i}`, {
+                vpcId: subnet.vpcId,
+                routes: [
+                    {
+                        cidrBlock: "0.0.0.0/0",
+                        natGatewayId: awsNatGateway.id,
+                    },
+                ],
+                tags: {
+                    Name: `privateRouteTable-${i}`,
+                },
+            })
+
+            const routeTableAssociation = new aws.ec2.RouteTableAssociation(`privateRoutetableAssociation-${i}`, {
+                subnetId: subnet.id,
+                routeTableId: privateRouteTable.id,
             });
 
             createdNatGateways.push(awsNatGateway);
