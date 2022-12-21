@@ -1,9 +1,31 @@
-import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
-import * as awsx from "@pulumi/awsx";
+import * as grondwork from "./groudwork"
 
-// Create an AWS resource (S3 Bucket)
-const bucket = new aws.s3.Bucket("my-bucket");
+const vpcDefinition: grondwork.vpcOptions = {
+    name: "EKS",
+    cidrBlock: "10.0.0.0/16",
+    enableDnsHostname: true,
+}
 
-// Export the name of the bucket
-export const bucketName = bucket.id;
+const publicSubnetsDefinition: grondwork.subnetOptions[] = [{
+    name: "EKS-Public-1",
+    cidrBlock: "10.0.0.0/20",
+    availabilityZone: "eu-central-1a",
+    assignPublicAddress: true
+}]
+
+const privateSubnetsDefinition: grondwork.subnetOptions[] = [{
+    name: "EKS-Private-1",
+    cidrBlock: "10.0.64.0/20",
+    availabilityZone: "eu-central-1b",
+    assignPublicAddress: false
+}]
+
+const groundworkDefinition: grondwork.groundWorkOptions = {
+    vpcOptions: vpcDefinition,
+    publicSubnetsOptions: publicSubnetsDefinition,
+    privateSubnetsOptions: privateSubnetsDefinition
+}
+
+const awsGroudwork = new grondwork.groundWork("eksGroundwork", groundworkDefinition);
+
+export const awsVpcInfo = awsGroudwork.exportVpcInfos();
