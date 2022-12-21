@@ -27,3 +27,5 @@ const groundworkDefinition: grondwork.groundWorkOptions = {
 }
 
 const awsGroudwork = new grondwork.groundWork("eksGroundwork", groundworkDefinition);
+
+export const awsVpcInfo = awsGroudwork.exportVpcInfos();
