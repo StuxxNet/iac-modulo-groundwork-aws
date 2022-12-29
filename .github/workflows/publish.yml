@@ -21,4 +21,4 @@ jobs:
         run: npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
 
       - name: Publishing the new package to the registry 
-        run: npm publish ./dist
+        run: npm publish
