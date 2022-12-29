@@ -1,13 +1,13 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
-export interface vpcOptions {
+export interface VpcOptions {
     name: string;
     cidrBlock: string;
     tags?: {};
 }
 
-export interface subnetOptions {
+export interface SubnetOptions {
     name: string;
     cidrBlock: string;
     availabilityZone: string;
@@ -15,13 +15,13 @@ export interface subnetOptions {
     tags?: {};
 }
 
-export interface groundWorkOptions {
-    vpcOptions: vpcOptions;
-    publicSubnetsOptions: subnetOptions[];
-    privateSubnetsOptions: subnetOptions[];
+export interface GroundWorkOptions {
+    vpcOptions: VpcOptions;
+    publicSubnetsOptions: SubnetOptions[];
+    privateSubnetsOptions: SubnetOptions[];
 }
 
-export class groundWork extends pulumi.ComponentResource {
+export class GroundWork extends pulumi.ComponentResource {
 
     private mainVpc: aws.ec2.Vpc;
     private internetGateway: aws.ec2.InternetGateway;
@@ -30,14 +30,14 @@ export class groundWork extends pulumi.ComponentResource {
     private publicRouteTable: aws.ec2.RouteTable;
     private privateRouteTable: aws.ec2.RouteTable;
     private awsNatGateway: aws.ec2.NatGateway;
-    private groundWorkOptions: groundWorkOptions;
+    private groundWorkOptions: GroundWorkOptions;
 
     private defaultTags: {} = {
         "Package": "groundwork_aws",
         "Created-By": "pulumi"
     }
 
-    constructor(name: string, groundWorkOptions: groundWorkOptions, opts?: pulumi.ResourceOptions) {
+    constructor(name: string, groundWorkOptions: GroundWorkOptions, opts?: pulumi.ResourceOptions) {
         super("modules:GroundWork", name, {}, opts);
 
         this.groundWorkOptions = groundWorkOptions
@@ -89,7 +89,7 @@ export class groundWork extends pulumi.ComponentResource {
 
     }
 
-    private createSubnets(subnets: subnetOptions[], isPublic: boolean): aws.ec2.Subnet[] {
+    private createSubnets(subnets: SubnetOptions[], isPublic: boolean): aws.ec2.Subnet[] {
         let createdSubnets: aws.ec2.Subnet[] = [];
 
         for(const [i, subnet] of subnets.entries()){
