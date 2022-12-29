@@ -1,1 +1,1 @@
-export { VpcOptions, SubnetOptions, GroundWorkOptions, GroundWork } from "./groundwork";
+export { VpcOptions, SubnetOptions, NetworkOptions, Network } from "./network";

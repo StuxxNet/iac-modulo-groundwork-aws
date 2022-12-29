@@ -1,10 +1,12 @@
-name: Build
+name: Publish
 on:
   push:
+    branches:
+      - main
 
 jobs:
   publish:
-    name: Building AWS Network Module
+    name: Publish AWS Network Module
     runs-on: ubuntu-latest
 
     steps:
@@ -25,3 +27,6 @@ jobs:
 
       - name: Building the package
         run: npm run build
+
+      - name: Publishing the new package to the registry 
+        run: npm publish

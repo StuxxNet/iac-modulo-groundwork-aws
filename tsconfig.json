@@ -1,23 +1,22 @@
 {
-    "compilerOptions": {
-      "strictPropertyInitialization": false,
-      "declaration": true,
-      "strict": true,
-      "outDir": ".",
-      "target": "es2016",
-      "module": "commonjs",
-      "moduleResolution": "node",
-      "sourceMap": true,
-      "experimentalDecorators": true,
-      "pretty": true,
-      "noFallthroughCasesInSwitch": true,
-      "noImplicitReturns": true,
-      "forceConsistentCasingInFileNames": true
-    },
-    "files": [
-      "index.ts"
-    ],
-    "include": [
-      "**/*"
-    ]
-  }
+  "compilerOptions": {
+    "strictPropertyInitialization": false,
+    "declaration": true,
+    "strict": true,
+    "target": "es2016",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "pretty": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+  },
+  "files": [
+    "index.ts"
+  ],
+  "include": [
+    "**/*"
+  ]
+}
