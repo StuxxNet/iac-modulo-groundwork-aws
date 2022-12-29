@@ -1,10 +1,10 @@
-name: Build
+name: Publish
 on:
   push:
 
 jobs:
-  build:
-    name: Build IaC Package
+  publish:
+    name: Publish IaC Package
     runs-on: ubuntu-latest
 
     steps:
@@ -17,8 +17,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Build and Publish
+        run: |
+          npm ci
+          npm run build
+          npm publish
 
-      - name: Build
-        run: npm run build
+      - env:
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
