@@ -17,9 +17,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
       
-      - name: Authenticating with the registry
-        run: npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
-
       - name: Installing dependencies
         run: npm install -i
 
