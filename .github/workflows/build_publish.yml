@@ -24,7 +24,7 @@ jobs:
         run: npm run build
 
       - name: Publishing the new package to the registry 
-        run: npm publish
-
+        run: |
+          npm publish
       - env:
         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
