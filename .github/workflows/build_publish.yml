@@ -23,7 +23,7 @@ jobs:
       - name: Installing dependencies
         run: npm ci
 
-      - name: Build the packge 
+      - name: Build the package 
         run: npm run build
 
       - name: Publishing the new package to the registry 
