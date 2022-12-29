@@ -44,41 +44,41 @@ export class groundWork extends pulumi.ComponentResource {
         this.groundWorkOptions = groundWorkOptions
 
         // Main VPC
-        this.createVpc(this.groundWorkOptions.vpcOptions);
+        this.createVpc();
 
         // Public network
-        this.createInternetGateway(this.mainVpc);
-        this.publicSubnets = this.createSubnets(this.mainVpc, this.groundWorkOptions.publicSubnetsOptions, true);
+        this.createInternetGateway();
+        this.publicSubnets = this.createSubnets(this.groundWorkOptions.publicSubnetsOptions, true);
 
         // Private network
         this.createNatGateways(this.publicSubnets[0]);
-        this.privateSubnets = this.createSubnets(this.mainVpc, this.groundWorkOptions.privateSubnetsOptions, false);
+        this.privateSubnets = this.createSubnets(this.groundWorkOptions.privateSubnetsOptions, false);
     }
 
-    private createVpc(vpc: vpcOptions) {
-        this.mainVpc = new aws.ec2.Vpc(vpc.name, {
-            cidrBlock: vpc.cidrBlock,
+    private createVpc() {
+        this.mainVpc = new aws.ec2.Vpc(this.groundWorkOptions.vpcOptions.name, {
+            cidrBlock: this.groundWorkOptions.vpcOptions.cidrBlock,
             instanceTenancy: "default",
-            enableDnsHostnames: vpc.enableDnsHostname,
+            enableDnsHostnames: this.groundWorkOptions.vpcOptions.enableDnsHostname,
 
             tags: {
-                Name: vpc.name
+                Name: this.groundWorkOptions.vpcOptions.name
             }
         }, { parent: this });
     }
 
-    private createInternetGateway(vpc: aws.ec2.Vpc) {
+    private createInternetGateway() {
         this.internetGateway = new aws.ec2.InternetGateway("internetGateway", {
-            vpcId: vpc.id,
+            vpcId: this.mainVpc.id,
             tags: {
-                Name: "Internet-Gateway",
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Internet-Gateway`,
             },
-        }, { parent: vpc });
+        }, { parent: this.mainVpc });
 
         this.publicRouteTable = new aws.ec2.RouteTable("publicRouteTable", {
             vpcId: this.mainVpc.id,
             tags: Object.assign({}, this.defaultTags, {
-                Name: "publicRouteTable",
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Public-RouteTable`,
             }),
         }, { parent: this.internetGateway });
 
@@ -90,38 +90,34 @@ export class groundWork extends pulumi.ComponentResource {
 
     }
 
-    private createSubnets(vpc: aws.ec2.Vpc, subnets: subnetOptions[], isPublic: boolean): aws.ec2.Subnet[] {
+    private createSubnets(subnets: subnetOptions[], isPublic: boolean): aws.ec2.Subnet[] {
         let createdSubnets: aws.ec2.Subnet[] = [];
 
-        for(const subnet of subnets){
+        for(const [i, subnet] of subnets.entries()){
 
             const awsSubnet = new aws.ec2.Subnet(subnet.name, {
-                vpcId: vpc.id,
+                vpcId: this.mainVpc.id,
                 cidrBlock: subnet.cidrBlock,
                 availabilityZone: subnet.availabilityZone,
                 mapPublicIpOnLaunch: subnet.assignPublicAddress,
                 tags: Object.assign({}, this.defaultTags, {
                     Name: subnet.name,
                 })
-            }, { parent: vpc });
+            }, { parent: this.mainVpc });
+
+            if(isPublic){
+                const routeTableAssociation = new aws.ec2.RouteTableAssociation(`publicRoutetableAssociation-${i+1}`, {
+                    subnetId: awsSubnet.id,
+                    routeTableId: this.publicRouteTable.id,
+                }, { parent: awsSubnet });
+            } else {
+                const routeTableAssociation = new aws.ec2.RouteTableAssociation(`privateRoutetableAssociation-${i+1}`, {
+                    subnetId: awsSubnet.id,
+                    routeTableId: this.privateRouteTable.id,
+                }, { parent: awsSubnet });
+            }
 
             createdSubnets.push(awsSubnet);
-        }
-
-        if(isPublic){
-            for (const [i, subnet] of createdSubnets.entries()){
-                const routeTableAssociation = new aws.ec2.RouteTableAssociation(`publicRoutetableAssociation-${i+1}`, {
-                    subnetId: subnet.id,
-                    routeTableId: this.publicRouteTable.id,
-                }, { parent: subnet });
-            }
-        } else {
-            for (const [i, subnet] of createdSubnets.entries()){
-                const routeTableAssociation = new aws.ec2.RouteTableAssociation(`privateRoutetableAssociation-${i+1}`, {
-                    subnetId: subnet.id,
-                    routeTableId: this.privateRouteTable.id,
-                }, { parent: subnet });
-            }
         }
 
         return createdSubnets;
@@ -129,20 +125,24 @@ export class groundWork extends pulumi.ComponentResource {
 
     private createNatGateways(publicSubnet: aws.ec2.Subnet) {
 
-        const elasticIp = new aws.ec2.Eip("elasticIp", {}, { parent: publicSubnet });
+        const elasticIp = new aws.ec2.Eip("elasticIp", {
+            tags: {
+                Name: `${this.groundWorkOptions.vpcOptions.name}-ElasticIp`
+            }
+        }, { parent: publicSubnet });
 
         this.awsNatGateway = new aws.ec2.NatGateway("natGatewayPrivateSubnet", {
             allocationId: elasticIp.id,
             subnetId: publicSubnet.id,
             tags: Object.assign({}, this.defaultTags, {
-                Name: "natGatewayPrivateSubnet",
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Nat-Gateway`,
             }),
         }, { parent: publicSubnet });
 
         this.privateRouteTable = new aws.ec2.RouteTable("privateRoutetable", {
             vpcId: this.mainVpc.id,
             tags: Object.assign({}, this.defaultTags, {
-                Name: "privateRouteTable",
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Private-RouteTable`,
             }),
         }, { parent: this.awsNatGateway });
 
