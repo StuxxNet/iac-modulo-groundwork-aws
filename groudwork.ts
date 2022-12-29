@@ -4,7 +4,6 @@ import * as aws from "@pulumi/aws";
 export interface vpcOptions {
     name: string;
     cidrBlock: string;
-    enableDnsHostname: boolean;
     tags?: {};
 }
 
@@ -59,10 +58,10 @@ export class groundWork extends pulumi.ComponentResource {
         this.mainVpc = new aws.ec2.Vpc(this.groundWorkOptions.vpcOptions.name, {
             cidrBlock: this.groundWorkOptions.vpcOptions.cidrBlock,
             instanceTenancy: "default",
-            enableDnsHostnames: this.groundWorkOptions.vpcOptions.enableDnsHostname,
+            enableDnsHostnames: true,
 
             tags: {
-                Name: this.groundWorkOptions.vpcOptions.name
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Vpc`
             }
         }, { parent: this });
     }

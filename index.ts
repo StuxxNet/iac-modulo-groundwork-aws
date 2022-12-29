@@ -2,8 +2,7 @@ import * as grondwork from "./groudwork"
 
 const vpcDefinition: grondwork.vpcOptions = {
     name: "EKS",
-    cidrBlock: "10.0.0.0/16",
-    enableDnsHostname: true,
+    cidrBlock: "10.0.0.0/16"
 }
 
 const publicSubnetsDefinition: grondwork.subnetOptions[] = [{
