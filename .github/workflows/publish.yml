@@ -20,5 +20,11 @@ jobs:
       - name: Authenticating with the registry
         run: npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
 
+      - name: Installing dependencies
+        run: npm install -i
+
+      - name: Building the package
+        run: npm run build
+
       - name: Publishing the new package to the registry 
         run: npm publish

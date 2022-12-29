@@ -1,3 +1,0 @@
-name: groundwork_aws
-description: Pulumi package to build the AWS network groundwork
-runtime: nodejs
