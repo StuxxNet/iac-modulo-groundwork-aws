@@ -109,8 +109,8 @@ export class groundWork extends pulumi.ComponentResource {
         }
 
         if(!isPublic){
-            for (const subnet of createdSubnets){
-                const routeTableAssociation = new aws.ec2.RouteTableAssociation("privateRoutetableAssociation", {
+            for (const [i, subnet] of createdSubnets.entries()){
+                const routeTableAssociation = new aws.ec2.RouteTableAssociation(`privateRoutetableAssociation-${i+1}`, {
                     subnetId: subnet.id,
                     routeTableId: this.privateRouteTable.id,
                 }, { parent: subnet });
