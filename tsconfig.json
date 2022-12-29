@@ -12,7 +12,6 @@
     "pretty": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
-    "forceConsistentCasingInFileNames": true
   },
   "files": [
     "index.ts"
