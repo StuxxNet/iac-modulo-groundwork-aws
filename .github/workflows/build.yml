@@ -1,7 +1,7 @@
 name: Build
 on:
   push:
-
+    - '!master'
 jobs:
   publish:
     name: Building AWS Network Module
