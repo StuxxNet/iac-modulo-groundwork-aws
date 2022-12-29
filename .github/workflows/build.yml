@@ -3,8 +3,8 @@ on:
   push:
 
 jobs:
-  run-action:
-    name: Run action
+  build:
+    name: Build IaC Package
     runs-on: ubuntu-latest
 
     steps:
