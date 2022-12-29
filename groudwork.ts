@@ -1,11 +1,9 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import { Vpc } from "@pulumi/aws/ec2";
 
 export interface vpcOptions {
     name: string;
     cidrBlock: string;
-    enableDnsHostname: boolean;
     tags?: {};
 }
 
@@ -29,7 +27,9 @@ export class groundWork extends pulumi.ComponentResource {
     private internetGateway: aws.ec2.InternetGateway;
     private publicSubnets: aws.ec2.Subnet[];
     private privateSubnets: aws.ec2.Subnet[];
-    private natGateway: aws.ec2.NatGateway[];
+    private publicRouteTable: aws.ec2.RouteTable;
+    private privateRouteTable: aws.ec2.RouteTable;
+    private awsNatGateway: aws.ec2.NatGateway;
     private groundWorkOptions: groundWorkOptions;
 
     private defaultTags: {} = {
@@ -43,69 +43,78 @@ export class groundWork extends pulumi.ComponentResource {
         this.groundWorkOptions = groundWorkOptions
 
         // Main VPC
-        this.mainVpc = this.createVpc(this.groundWorkOptions.vpcOptions);
+        this.createVpc();
 
         // Public network
-        this.internetGateway = this.createInternetGateway(this.mainVpc);
-        this.publicSubnets = this.createSubnets(this.mainVpc, this.groundWorkOptions.publicSubnetsOptions);
+        this.createInternetGateway();
+        this.publicSubnets = this.createSubnets(this.groundWorkOptions.publicSubnetsOptions, true);
 
         // Private network
-        this.privateSubnets = this.createSubnets(this.mainVpc, this.groundWorkOptions.privateSubnetsOptions);
-        this.natGateway = this.createNatGateways(this.privateSubnets);
+        this.createNatGateways(this.publicSubnets[0]);
+        this.privateSubnets = this.createSubnets(this.groundWorkOptions.privateSubnetsOptions, false);
     }
 
-    private createVpc(vpc: vpcOptions): aws.ec2.Vpc {
-        const awsVpc = new aws.ec2.Vpc(vpc.name, {
-            cidrBlock: vpc.cidrBlock,
+    private createVpc() {
+        this.mainVpc = new aws.ec2.Vpc(this.groundWorkOptions.vpcOptions.name, {
+            cidrBlock: this.groundWorkOptions.vpcOptions.cidrBlock,
             instanceTenancy: "default",
-            enableDnsHostnames: vpc.enableDnsHostname,
+            enableDnsHostnames: true,
 
             tags: {
-                Name: vpc.name
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Vpc`
             }
         }, { parent: this });
-
-        return awsVpc;
     }
 
-    private createInternetGateway(vpc: aws.ec2.Vpc): aws.ec2.InternetGateway {
-        const awsInternetGateway = new aws.ec2.InternetGateway("internetGateway", {
-            vpcId: vpc.id,
+    private createInternetGateway() {
+        this.internetGateway = new aws.ec2.InternetGateway("internetGateway", {
+            vpcId: this.mainVpc.id,
             tags: {
-                Name: `Internet-Gateway`,
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Internet-Gateway`,
             },
-        }, { parent: vpc });
+        }, { parent: this.mainVpc });
 
-        const defaultRouteTable = new aws.ec2.DefaultRouteTable("defaultRouteTable", {
-            defaultRouteTableId: vpc.defaultRouteTableId,
-            routes: [
-                {
-                    cidrBlock: "0.0.0.0/0",
-                    gatewayId: awsInternetGateway.id,
-                },
-            ],
+        this.publicRouteTable = new aws.ec2.RouteTable("publicRouteTable", {
+            vpcId: this.mainVpc.id,
             tags: Object.assign({}, this.defaultTags, {
-                Name: "PublicRoutes",
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Public-RouteTable`,
             }),
-        }, { parent: awsInternetGateway });
-        
-        return awsInternetGateway;
+        }, { parent: this.internetGateway });
+
+        const privateroute = new aws.ec2.Route('privateRoute', {
+            routeTableId: this.publicRouteTable.id,
+            gatewayId: this.internetGateway.id,
+            destinationCidrBlock: "0.0.0.0/0",
+        }, { parent: this.publicRouteTable })
+
     }
 
-    private createSubnets(vpc: aws.ec2.Vpc, subnets: subnetOptions[]): aws.ec2.Subnet[] {
+    private createSubnets(subnets: subnetOptions[], isPublic: boolean): aws.ec2.Subnet[] {
         let createdSubnets: aws.ec2.Subnet[] = [];
 
-        for(const subnet of subnets){
+        for(const [i, subnet] of subnets.entries()){
 
             const awsSubnet = new aws.ec2.Subnet(subnet.name, {
-                vpcId: vpc.id,
+                vpcId: this.mainVpc.id,
                 cidrBlock: subnet.cidrBlock,
                 availabilityZone: subnet.availabilityZone,
                 mapPublicIpOnLaunch: subnet.assignPublicAddress,
                 tags: Object.assign({}, this.defaultTags, {
                     Name: subnet.name,
                 })
-            }, { parent: vpc });
+            }, { parent: this.mainVpc });
+
+            if(isPublic){
+                const routeTableAssociation = new aws.ec2.RouteTableAssociation(`publicRoutetableAssociation-${i+1}`, {
+                    subnetId: awsSubnet.id,
+                    routeTableId: this.publicRouteTable.id,
+                }, { parent: awsSubnet });
+            } else {
+                const routeTableAssociation = new aws.ec2.RouteTableAssociation(`privateRoutetableAssociation-${i+1}`, {
+                    subnetId: awsSubnet.id,
+                    routeTableId: this.privateRouteTable.id,
+                }, { parent: awsSubnet });
+            }
 
             createdSubnets.push(awsSubnet);
         }
@@ -113,42 +122,34 @@ export class groundWork extends pulumi.ComponentResource {
         return createdSubnets;
     }
 
-    private createNatGateways(subnets: aws.ec2.Subnet[]): aws.ec2.NatGateway[] {
-        let createdNatGateways: aws.ec2.NatGateway[] = [];
-        for(const [i, subnet] of subnets.entries()){
+    private createNatGateways(publicSubnet: aws.ec2.Subnet) {
 
-            const elasticIp = new aws.ec2.Eip(`elasticIp-${i+1}`, {}, { parent: subnet });
+        const elasticIp = new aws.ec2.Eip("elasticIp", {
+            tags: {
+                Name: `${this.groundWorkOptions.vpcOptions.name}-ElasticIp`
+            }
+        }, { parent: publicSubnet });
 
-            const awsNatGateway = new aws.ec2.NatGateway(`natGatewayPrivateSubnet-${i+1}`, {
-                allocationId: elasticIp.id,
-                subnetId: subnet.id,
-                tags: Object.assign({}, this.defaultTags, {
-                    Name: `natGatewayPrivateSubnet-${i+1}`,
-                }),
-            }, { parent: subnet });
+        this.awsNatGateway = new aws.ec2.NatGateway("natGatewayPrivateSubnet", {
+            allocationId: elasticIp.id,
+            subnetId: publicSubnet.id,
+            tags: Object.assign({}, this.defaultTags, {
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Nat-Gateway`,
+            }),
+        }, { parent: publicSubnet });
 
-            const privateRouteTable = new aws.ec2.RouteTable(`privateRoutetable-${i+1}`, {
-                vpcId: subnet.vpcId,
-                routes: [
-                    {
-                        cidrBlock: "0.0.0.0/0",
-                        natGatewayId: awsNatGateway.id,
-                    },
-                ],
-                tags: Object.assign({}, this.defaultTags, {
-                    Name: `privateRouteTable-${i+1}`,
-                }),
-            }, { parent: subnet })
+        this.privateRouteTable = new aws.ec2.RouteTable("privateRoutetable", {
+            vpcId: this.mainVpc.id,
+            tags: Object.assign({}, this.defaultTags, {
+                Name: `${this.groundWorkOptions.vpcOptions.name}-Private-RouteTable`,
+            }),
+        }, { parent: this.awsNatGateway });
 
-            const routeTableAssociation = new aws.ec2.RouteTableAssociation(`privateRoutetableAssociation-${i+1}`, {
-                subnetId: subnet.id,
-                routeTableId: privateRouteTable.id,
-            }, { parent: privateRouteTable });
-
-            createdNatGateways.push(awsNatGateway);
-        }
-
-        return createdNatGateways;
+        const privateroute = new aws.ec2.Route('privateRoute', {
+            routeTableId: this.privateRouteTable.id,
+            natGatewayId: this.awsNatGateway.id,
+            destinationCidrBlock: "0.0.0.0/0",
+        }, { parent: this.privateRouteTable })
     }
 
     private returnOnlyId(resources: any[]): pulumi.Output<string>[] {
@@ -165,7 +166,7 @@ export class groundWork extends pulumi.ComponentResource {
             internetGatewayid: this.internetGateway.id,
             publicSubnetsId: this.returnOnlyId(this.publicSubnets),
             privateSubnetsId: this.returnOnlyId(this.privateSubnets),
-            natGatewayIds: this.returnOnlyId(this.natGateway)
+            natGatewayIds: this.awsNatGateway.id
         }
     }
 
