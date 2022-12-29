@@ -4,7 +4,7 @@ on:
 
 jobs:
   publish:
-    name: Publish IaC Package
+    name: Publish AWS Network Module
     runs-on: ubuntu-latest
 
     steps:

@@ -33,12 +33,12 @@ export class Network extends pulumi.ComponentResource {
     private NetworkOptions: NetworkOptions;
 
     private defaultTags: {} = {
-        "Package": "groundwork_aws",
+        "Package": "iac-module-network-aws",
         "Created-By": "pulumi"
     }
 
     constructor(name: string, NetworkOptions: NetworkOptions, opts?: pulumi.ResourceOptions) {
-        super("modules:GroundWork", name, {}, opts);
+        super("modules:NetworkAws", name, {}, opts);
 
         this.NetworkOptions = NetworkOptions
         // Main VPC
