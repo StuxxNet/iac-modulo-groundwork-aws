@@ -13,10 +13,7 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
   },
-  "files": [
-    "index.ts"
-  ],
   "include": [
-    "**/*"
+    "src/**/*"
   ]
 }
