@@ -43,14 +43,14 @@ const publicSubnetsDefinition: SubnetOptions[] = [{
 }, {
     name: "EKS-Public-2",
     cidrBlock: "10.0.64.0/20",
-    availabilityZone: "eu-central-1a",
+    availabilityZone: "eu-central-1b",
     assignPublicAddress: true
 }]
 
 const privateSubnetsDefinition: SubnetOptions[] = [{
     name: "EKS-Private-1",
     cidrBlock: "10.0.128.0/20",
-    availabilityZone: "eu-central-1b",
+    availabilityZone: "eu-central-1a",
     assignPublicAddress: false
 }, {
     name: "EKS-Private-2",
