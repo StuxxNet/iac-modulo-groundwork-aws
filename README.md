@@ -25,7 +25,7 @@ Here you can find a sample of a "package.json" file
 
 ## Passing Values to Consume the Module
 
-After adding the file in the "package.json" and executing the installation you can just pass the values as below, for example:
+After adding the module in the "package.json" and executing the installation you can just pass the values as below, for example:
 
 ```typescript
 import { VpcOptions, SubnetOptions, NetworkOptions, Network } from "iac-module-network-aws";
